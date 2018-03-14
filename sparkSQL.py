@@ -27,10 +27,14 @@ def prepareForDataFrame(elem):
     ]
 
 if __name__ == "__main__":
-    sc = SparkContext(appName='Meteoho', master='local[2]')
     inputDirname = sys.argv[1]
+    sparkSession = SparkSession.builder.appName(
+        "meteo ho ho"
+    ).master(
+        "local[2]"
+    ).getOrCreate()
 
-    rdd = sc.textFile(inputDirname).map(
+    rdd = sparkSession.sparkContext.textFile(inputDirname).map(
         extract
     ).filter(
         removeInvalid
@@ -38,31 +42,27 @@ if __name__ == "__main__":
         prepareForDataFrame
     )
 
-    spark = SparkSession.builder.appName(
-        "meteohohoho"
-    ).config(
-        "master", "local[2]"
-    ).getOrCreate()
-
     schema = [
-         #Row(name="year"),
-         #Row(name="month"),
-         #Row(name="temperature"),
-         #Row(name="quality")
          "year",
          "month",
          "temperature",
          "quality"
     ]
-    df = spark.createDataFrame(rdd, schema)
+    df = sparkSession.createDataFrame(rdd, schema)
 
     from pyspark.sql import functions as fns
-    elemList = df.groupBy(df.month).agg(
+    aggTuple = (
         fns.min(df.temperature),
         fns.max(df.temperature),
         fns.avg(df.temperature)
+    )
+    elemList = df.groupBy(
+        df.month
+    ).agg(
+        *aggTuple
     ).orderBy(
         df.month
     ).collect()
+    
     for elem in elemList:
         print (elem)
